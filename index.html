@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Contador de Dígitos (0-9)</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 50px;
+    }
+    h1 {
+      color: #333;
+    }
+    #numeroInput {
+      font-size: 24px;
+      padding: 8px;
+      width: 60px;
+      text-align: center;
+      margin-bottom: 20px;
+      border: 2px solid #333;
+      border-radius: 6px;
+    }
+    canvas {
+      max-width: 600px;
+      background: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #mensaje {
+      color: red;
+      margin-top: 10px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Contador de Dígitos (0-9)</h1>
+  <p>Ingresa un número (0-9) y presiona <strong>Enter</strong></p>
+  <input type="text" id="numeroInput" maxlength="1" autofocus>
+  <div id="mensaje"></div>
+  <canvas id="grafica" width="600" height="400"></canvas>
+
+  <script>
+    // Inicializar contador
+    const contador = Array(10).fill(0);
+
+    // Configurar gráfica con Chart.js
+    const ctx = document.getElementById('grafica').getContext('2d');
+    const grafica = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
+        datasets: [{
+          label: 'Cantidad de repeticiones',
+          data: contador,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 2,
+          borderRadius: 5
+        }]
+      },
+      options: {
+        scales: {
+          y: {
+            beginAtZero: true,
+            precision: 0
+          }
+        },
+        plugins: {
+          legend: {
+            display: false
+          }
+        }
+      }
+    });
+
+    // Función para manejar la entrada
+    function manejarEntrada(e) {
+      if (e.key === 'Enter') {
+        const valor = e.target.value.trim();
+        const mensaje = document.getElementById('mensaje');
+
+        if (/^[0-9]$/.test(valor)) {
+          contador[Number(valor)]++;
+          grafica.update();
+          mensaje.textContent = '';
+        } else {
+          mensaje.textContent = 'Por favor ingresa un número entre 0 y 9.';
+        }
+
+        e.target.value = '';
+      }
+    }
+
+    // Asociar evento al input
+    document.getElementById('numeroInput').addEventListener('keydown', manejarEntrada);
+  </script>
+</body>
+</html>
