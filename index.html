@@ -1,3 +1,4 @@
+<!-- index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -5,16 +6,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AVblog</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: Arial, sans-serif;
       background-color: #fa0303;
-      color: #000000;
+      color: #000;
       line-height: 1.6;
     }
 
@@ -40,24 +37,27 @@
       margin: 20px auto;
     }
 
-    .github-btn {
+    .button-group {
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .btn {
       display: inline-block;
       padding: 10px 20px;
+      margin: 5px;
       background-color: #24292e;
       color: #fff;
       text-decoration: none;
       border-radius: 5px;
       transition: background-color 0.3s ease;
-      margin-top: 10px;
     }
 
-    .github-btn:hover {
+    .btn:hover {
       background-color: #444c56;
     }
 
-    section {
-      margin: 40px 0;
-    }
+    section { margin: 40px 0; }
 
     h2 {
       border-bottom: 2px solid #ddd;
@@ -74,15 +74,8 @@
     }
 
     @media (max-width: 600px) {
-      .profile-img {
-        width: 100px;
-        height: 100px;
-      }
-
-      .github-btn {
-        padding: 8px 16px;
-        font-size: 14px;
-      }
+      .profile-img { width: 100px; height: 100px; }
+      .btn { padding: 8px 16px; font-size: 14px; }
     }
   </style>
 </head>
@@ -95,34 +88,21 @@
   <div class="container">
     <img src="mi-imagen.jpg" alt="mi-imagen" class="profile-img" />
 
-    <a href="https://github.com/Vegmir" target="_blank" class="github-btn">Visita mi GitHub</a>
+    <div class="button-group">
+      <a href="https://github.com/Vegmir" target="_blank" class="btn">Visita mi GitHub</a>
+      <a href="pagina2.html" class="btn">PROYECTO CON IA</a>
+    </div>
 
-
-
-<section id="hola">
-      <h2>Yo </h2>
-      <p>
-        Hola!, que tal, me llamo Antonio Vega
-      </p> 
-      <p>
-Soy un estudiante de Ingeniería Biomédica. Me gusta la mecánica, el hecho de desarmar cosas y ver su funcionamiento interno. La precisión de las máquinas sincronizadas, sabiendo que uno fue quien las armó, es gratificante de ver.
-No sé cómo quedé aquí, pero bueno. Me apasiona el 4x4 y por aquí puede que publique mis momentos de ocio en la programación.
-      </p>
-      <p>
-No creo publicar mucho aquí, pero lo que llegue a subir puede que sea interesante.
-      </p>
+    <section id="yo">
+      <h2>Yo</h2>
+      <p>Hola!, qué tal, me llamo Antonio Vega.</p>
+      <p>Soy estudiante de Ingeniería Biomédica. Me gusta la mecánica, el desarme y análisis técnico de sistemas.</p>
     </section>
 
-
-
-    <section id="hola">
-      <h2>Lo que debes saber </h2>
-      <p>
-        bien venidos, un grupo selecto que pocos conocen y que muchos creen inalcanzable. Decían que no cualquiera puede formar parte de ese círculo; que es un sitio reservado solo para los que han probado su valor, pero no como uno pensaría,un mundo que existe justo al lado del nuestro, pero que solo algunos pueden ver.
-      </p>
+    <section id="saber">
+      <h2>Lo que debes saber</h2>
+      <p>Bienvenidos a este pequeño espacio. No es para todos, pero sí para quienes ven más allá del común.</p>
     </section>
-
-   
 
     <section id="contacto">
       <h2>Contacto</h2>
@@ -133,6 +113,103 @@ No creo publicar mucho aquí, pero lo que llegue a subir puede que sea interesan
   <footer>
     &copy; 2025 Mi Página Personal. Todos los derechos reservados.
   </footer>
+
+</body>
+</html>
+
+
+
+<!-- pagina2.html -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión Inteligente del Taller</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f4f4f4;
+      color: #333;
+    }
+
+    h1, h2 {
+      color: #2c3e50;
+    }
+
+    section {
+      margin-bottom: 30px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-back {
+      display: inline-block;
+      margin-bottom: 20px;
+      padding: 10px 20px;
+      background-color: #24292e;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: background-color 0.3s ease;
+    }
+
+    .btn-back:hover {
+      background-color: #444c56;
+    }
+
+    ul {
+      margin-left: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <a href="index.html" class="btn-back">ATRÁS</a>
+
+  <h1>Gestión Inteligente del Taller Mecánico</h1>
+
+  <p>Esta plataforma utiliza Inteligencia Artificial para mejorar la administración de talleres mecánicos, tanto para clientes individuales como flotas empresariales.</p>
+
+  <section>
+    <h2>1. Predicción de Mantenimientos Preventivos</h2>
+    <p>Anticipa necesidades de servicio con base en historial y uso del vehículo, reduciendo tiempos de inactividad.</p>
+  </section>
+
+  <section>
+    <h2>2. Optimización del Inventario</h2>
+    <p>Ajusta el stock según la demanda futura estimada, evitando exceso o falta de piezas.</p>
+  </section>
+
+  <section>
+    <h2>3. Automatización de Citas</h2>
+    <p>Organiza la agenda del taller según la carga de trabajo, disponibilidad y tipo de servicio.</p>
+  </section>
+
+  <section>
+    <h2>4. Gestión de Flotas</h2>
+    <p>Administra múltiples vehículos empresariales, registra costos y genera informes.</p>
+  </section>
+
+  <section>
+    <h2>5. Análisis Financiero</h2>
+    <p>Detecta los servicios más rentables y sugiere mejoras de precios o promociones.</p>
+  </section>
+
+  <section>
+    <h2>Beneficios</h2>
+    <ul>
+      <li>Disminuye fallas críticas.</li>
+      <li>Control eficiente de inventario.</li>
+      <li>Agenda automatizada.</li>
+      <li>Reportes para empresas.</li>
+      <li>Mejora la rentabilidad del taller.</li>
+    </ul>
+  </section>
 
 </body>
 </html>
