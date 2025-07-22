@@ -1,0 +1,104 @@
+# LABORATORIO 3 - CLASIFICADOR BINARIO CON MNIST (DÍGITO 7)
+
+#   LIBRERÍAS
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    confusion_matrix,
+    accuracy_score,
+    precision_score,
+    recall_score,
+    roc_curve,
+    roc_auc_score,
+    precision_recall_curve
+)
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sns
+
+#  DATASET MNIST
+mnist = fetch_openml('mnist_784', version=1, as_frame=False)
+X, y = mnist["data"], mnist["target"].astype(int)
+
+#   CONVERSIÓN A BINARIA: ¿ES UN 7?
+y_binario = (y == 7).astype(int)  # 1 si es 7, 0 si no
+
+#  TRAIN Y TEST
+X_train, X_test, y_train, y_test = train_test_split(X, y_binario, test_size=0.2, random_state=42)
+
+# KNN
+knn_clf = KNeighborsClassifier()
+knn_clf.fit(X_train, y_train)
+y_knn_pred = knn_clf.predict(X_test)
+acc_knn = accuracy_score(y_test, y_knn_pred)
+
+#  RANDOM FOREST
+rf_clf = RandomForestClassifier(random_state=42)
+rf_clf.fit(X_train, y_train)
+y_rf_pred = rf_clf.predict(X_test)
+acc_rf = accuracy_score(y_test, y_rf_pred)
+
+print(f"KNN Accuracy: {acc_knn:.4f}")
+print(f"Random Forest Accuracy: {acc_rf:.4f}")
+
+#  MEJOR MODELO
+best_model = rf_clf if acc_rf > acc_knn else knn_clf
+print("Modelo seleccionado:", "Random Forest" if best_model == rf_clf else "KNN")
+
+#  MATRIZ DE CONFUSIÓN
+y_pred = best_model.predict(X_test)
+conf_mat = confusion_matrix(y_test, y_pred)
+
+plt.figure(figsize=(6, 4))
+sns.heatmap(conf_mat, annot=True, fmt='d', cmap='Blues')
+plt.title("Matriz de Confusión")
+plt.xlabel("Predicción")
+plt.ylabel("Valor Real")
+plt.show()
+
+# PRECISION, RECALL, THRESHOLDS
+y_scores = best_model.predict_proba(X_test)[:, 1]
+precisions, recalls, thresholds = precision_recall_curve(y_test, y_scores)
+
+# PRECISION vs RECALL
+plt.figure()
+plt.plot(recalls, precisions, color="b")
+plt.title("Precision vs Recall")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.grid(True)
+plt.show()
+
+#  PRECISION vs THRESHOLD
+plt.figure()
+plt.plot(thresholds, precisions[:-1], color="green")
+plt.title("Precision vs Threshold")
+plt.xlabel("Threshold")
+plt.ylabel("Precision")
+plt.grid(True)
+plt.show()
+
+#  RECALL vs THRESHOLD
+plt.figure()
+plt.plot(thresholds, recalls[:-1], color="red")
+plt.title("Recall vs Threshold")
+plt.xlabel("Threshold")
+plt.ylabel("Recall")
+plt.grid(True)
+plt.show()
+
+#  CURVA ROC
+fpr, tpr, _ = roc_curve(y_test, y_scores)
+roc_auc = roc_auc_score(y_test, y_scores)
+
+plt.figure()
+plt.plot(fpr, tpr, label=f"AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+plt.title("Curva ROC")
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.legend()
+plt.grid(True)
+plt.show()
