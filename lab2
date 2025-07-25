@@ -1,0 +1,158 @@
+limport numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_openml
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import confusion_matrix, precision_recall_curve, roc_curve, auc, accuracy_score, precision_score, recall_score
+import seaborn as sns
+
+# 1. Descargar el MNIST dataset
+print("Descargando el dataset MNIST...")
+mnist = fetch_openml('mnist_784', version=1, cache=True, as_frame=False)
+X, y = mnist.data, mnist.target
+
+# Convertir las etiquetas a enteros para asegurar el tipo correcto
+y = y.astype(np.uint8)
+
+print("Dataset MNIST descargado.")
+print(f"Forma de X: {X.shape}")
+print(f"Forma de y: {y.shape}")
+
+# Dividir el dataset en entrenamiento y prueba
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+print(f"Tamaño del conjunto de entrenamiento: {len(X_train)} muestras")
+print(f"Tamaño del conjunto de prueba: {len(X_test)} muestras")
+
+# Para simplificar el problema y seguir las instrucciones del documento (que sugiere clasificar 'es 7' o 'no es 7'),
+# vamos a crear un problema de clasificación binaria: ¿Es el dígito un '7' o no?
+y_train_7 = (y_train == 7)
+y_test_7 = (y_test == 7)
+
+print(f"Ejemplos de y_train_7 (binario): {y_train_7[:5]}")
+print(f"Ejemplos de y_test_7 (binario): {y_test_7[:5]}")
+
+# 2. Realizar dos modelos: KNN y RandomForest
+
+# Modelo KNN
+print("\nEntrenando modelo KNN...")
+knn_clf = KNeighborsClassifier(n_neighbors=3) # Puedes ajustar el número de vecinos
+knn_clf.fit(X_train, y_train_7)
+print("Modelo KNN entrenado.")
+
+# Modelo RandomForest
+print("Entrenando modelo RandomForest...")
+rnd_clf = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1) # Puedes ajustar el número de estimadores
+rnd_clf.fit(X_train, y_train_7)
+print("Modelo RandomForest entrenado.")
+
+# 3. Decidir cuál es el mejor modelo
+print("\nEvaluando modelos para decidir cuál es el mejor...")
+
+# Predicciones para KNN
+y_pred_knn = knn_clf.predict(X_test)
+accuracy_knn = accuracy_score(y_test_7, y_pred_knn)
+precision_knn = precision_score(y_test_7, y_pred_knn)
+recall_knn = recall_score(y_test_7, y_pred_knn)
+
+print(f"\n--- Métricas para KNN ---")
+print(f"Accuracy KNN: {accuracy_knn:.4f}")
+print(f"Precision KNN: {precision_knn:.4f}")
+print(f"Recall KNN: {recall_knn:.4f}")
+
+# Predicciones para RandomForest
+y_pred_rnd = rnd_clf.predict(X_test)
+accuracy_rnd = accuracy_score(y_test_7, y_pred_rnd)
+precision_rnd = precision_score(y_test_7, y_pred_rnd)
+recall_rnd = recall_score(y_test_7, y_pred_rnd)
+
+print(f"\n--- Métricas para RandomForest ---")
+print(f"Accuracy RandomForest: {accuracy_rnd:.4f}")
+print(f"Precision RandomForest: {precision_rnd:.4f}")
+print(f"Recall RandomForest: {recall_rnd:.4f}")
+
+# Decisión del mejor modelo (basado en Accuracy, o puedes elegir otra métrica según el contexto)
+if accuracy_knn > accuracy_rnd:
+    print("\nEl modelo KNN parece ser el mejor basado en la precisión (accuracy).")
+    best_model = knn_clf
+    y_scores_best = knn_clf.predict_proba(X_test)[:, 1]
+    y_pred_best = y_pred_knn
+else:
+    print("\nEl modelo RandomForest parece ser el mejor basado en la precisión (accuracy).")
+    best_model = rnd_clf
+    y_scores_best = rnd_clf.predict_proba(X_test)[:, 1]
+    y_pred_best = y_pred_rnd
+
+# 4. Crear una matriz de confusión para el mejor modelo
+print("\nCreando matriz de confusión para el mejor modelo...")
+cm = confusion_matrix(y_test_7, y_pred_best)
+
+plt.figure(figsize=(6, 5))
+sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", cbar=False,
+            xticklabels=['No es 7', 'Es 7'], yticklabels=['No es 7', 'Es 7'])
+plt.xlabel('Predicción')
+plt.ylabel('Valor Real')
+plt.title('Matriz de Confusión para el Mejor Modelo')
+plt.show()
+print("Matriz de confusión creada.")
+
+# 5. Calcular la precisión, recall, threshold con precision_recall_curve()
+print("\nCalculando precisión, recall y umbrales con precision_recall_curve()...")
+precisions, recalls, thresholds = precision_recall_curve(y_test_7, y_scores_best)
+print("Cálculo completado.")
+
+# 6. Graficar precision vs recall
+print("Graficando precisión vs recall...")
+plt.figure(figsize=(8, 6))
+plt.plot(recalls, precisions, linewidth=2, label="Curva Precisión-Recall")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Curva Precisión-Recall")
+plt.grid(True)
+plt.legend()
+plt.show()
+print("Gráfico precisión vs recall creado.")
+
+# 7. Graficar precision vs threshold
+print("Graficando precisión vs umbral...")
+plt.figure(figsize=(8, 6))
+plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
+plt.plot(thresholds, recalls[:-1], "g-", label="Recall") # Incluimos recall para comparar
+plt.xlabel("Umbral")
+plt.ylabel("Valor")
+plt.title("Precisión y Recall vs Umbral")
+plt.grid(True)
+plt.legend()
+plt.ylim([0, 1])
+plt.show()
+print("Gráfico precisión vs umbral creado.")
+
+# 8. Graficar recall vs threshold
+print("Graficando recall vs umbral...")
+plt.figure(figsize=(8, 6))
+plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
+plt.xlabel("Umbral")
+plt.ylabel("Recall")
+plt.title("Recall vs Umbral")
+plt.grid(True)
+plt.legend()
+plt.ylim([0, 1])
+plt.show()
+print("Gráfico recall vs umbral creado.")
+
+# 9. Graficar curva ROC
+print("Graficando curva ROC...")
+fpr, tpr, roc_thresholds = roc_curve(y_test_7, y_scores_best)
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, linewidth=2, label=f'Curva ROC (AUC = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], 'k--', label='Clasificador aleatorio') # Diagonal
+plt.xlabel('Tasa de Falsos Positivos (FPR)')
+plt.ylabel('Tasa de Verdaderos Positivos (TPR) - Recall')
+plt.title('Curva ROC')
+plt.grid(True)
+plt.legend(loc="lower right")
+plt.show()
+print("Curva ROC creada.")
