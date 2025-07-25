@@ -1,81 +1,169 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Recetas Inteligentes - Dashboard Clustering</title>
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f9f9f9;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background-color: #ff7043;
-      color: white;
-      padding: 20px;
-      text-align: center;
-    }
-    .container {
-      padding: 30px;
-    }
-    h2 {
-      color: #333;
-    }
-    #clusterGraph {
-      width: 100%;
-      height: 600px;
-    }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🍽️ Dashboard de Clustering - Recetas Inteligentes</h1>
-  </header>
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+from scipy.cluster.hierarchy import dendrogram, linkage
+from sklearn.decomposition import PCA # Para visualización si hay muchas dimensiones
+import warnings
 
-  <div class="container">
-    <h2>Visualización de Recetas por Clúster</h2>
-    <div id="clusterGraph"></div>
-  </div>
+# Suprimir advertencias para una salida más limpia
+warnings.filterwarnings('ignore')
 
-  <script>
-    fetch("data/clustering_results.json")
-      .then(response => response.json())
-      .then(jsonData => {
-        const clusters = {};
+# --- Sección 1: Importar Librerías y Cargar Datos ---
+print("--- Sección 1: Importando Librerías y Cargando Datos ---")
+try:
+    data = pd.read_csv('churn_prediction.csv')
+    print("Datos cargados exitosamente. Primeras 5 filas:")
+    print(data.head())
+except FileNotFoundError:
+    print("Error: 'churn_prediction.csv' no encontrado. Asegúrate de que el archivo esté en el mismo directorio o proporciona la ruta correcta.")
+    exit() # Sale del script si el archivo no se encuentra
 
-        jsonData.forEach(row => {
-          const cluster = row.cluster;
-          if (!clusters[cluster]) {
-            clusters[cluster] = { x: [], y: [] };
-          }
-          clusters[cluster].x.push(row.calories);
-          clusters[cluster].y.push(row.protein);
-        });
+# --- Sección 2: Preparación de Datos para Clustering ---
+print("\n--- Sección 2: Preparación de Datos para Clustering ---")
 
-        const plotData = Object.keys(clusters).map((clusterId, i) => {
-          const colors = ['#FF5733', '#33C3FF', '#82E0AA', '#FFC300'];
-          return {
-            x: clusters[clusterId].x,
-            y: clusters[clusterId].y,
-            mode: 'markers',
-            type: 'scatter',
-            name: `Cluster ${clusterId}`,
-            marker: { size: 12, color: colors[i % colors.length] }
-          };
-        });
+# Define las columnas numéricas relevantes para el clustering.
+# ¡IMPORTANTE! Ajusta esta lista según las columnas reales en tu churn_prediction.csv
+# que sean adecuadas para describir el comportamiento o perfil del cliente.
+features_for_clustering = [
+    'Edad', 'Ingresos', 'Numero_Transacciones', 'Valor_Total_Transacciones',
+    'Antiguedad_Cliente_Meses', 'Uso_Servicio_Frecuencia', 'Gasto_Promedio_Mensual'
+]
 
-        const layout = {
-          title: 'Distribución de Recetas por Nutrientes (Calorías vs Proteínas)',
-          xaxis: { title: 'Calorías' },
-          yaxis: { title: 'Proteína (g)' },
-          margin: { t: 50, l: 60, r: 30, b: 60 }
-        };
+# Filtra solo las columnas numéricas que existen en el DataFrame
+# Esto es para evitar errores si alguna de las 'features_for_clustering' no está en el CSV
+existing_features = [col for col in features_for_clustering if col in data.columns]
 
-        Plotly.newPlot('clusterGraph', plotData, layout);
-      })
-      .catch(error => console.error('Error al cargar los datos:', error));
-  </script>
-</body>
-</html>
+if not existing_features:
+    print("Error: No se encontraron columnas numéricas relevantes para el clustering en el archivo. Por favor, revisa la lista 'features_for_clustering' y tu archivo CSV.")
+    exit()
+
+print(f"Columnas seleccionadas para clustering: {existing_features}")
+X = data[existing_features].copy()
+
+# Manejo de valores nulos: Imputar con la media (puedes elegir otras estrategias)
+print("Verificando valores nulos antes de la imputación:")
+print(X.isnull().sum())
+X.fillna(X.mean(), inplace=True)
+print("Valores nulos después de la imputación con la media:")
+print(X.isnull().sum())
+
+# Escalado de datos: Estandarización
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+X_scaled_df = pd.DataFrame(X_scaled, columns=existing_features)
+print("\nDatos escalados (primeras 5 filas):")
+print(X_scaled_df.head())
+
+# --- Sección 3: Clustering Jerárquico (para ayudar a determinar K) ---
+print("\n--- Sección 3: Generando Dendrograma para Clustering Jerárquico ---")
+plt.figure(figsize=(15, 8))
+plt.title('Dendrograma de Clientes')
+# 'ward' minimiza la varianza dentro de cada cluster
+Z = linkage(X_scaled, method='ward')
+dendrogram(Z,
+           truncate_mode='lastp',  # Muestra solo los últimos p clusters formados
+           p=30,                   # Número de clusters a mostrar en la parte superior del dendrograma
+           leaf_rotation=90.,      # Rota las etiquetas del eje x
+           leaf_font_size=8.,      # Tamaño de la fuente de las etiquetas
+           show_contracted=True,   # Muestra los clusters contraídos
+           )
+plt.xlabel('Índice de Muestra o Tamaño de Cluster')
+plt.ylabel('Distancia')
+plt.show()
+print("El dendrograma se ha generado. Busca 'cortes' grandes para estimar K.")
+
+# --- Sección 4: Determinación del Número Óptimo de Clusters (Método del Codo para K-Means) ---
+print("\n--- Sección 4: Aplicando el Método del Codo para K-Means ---")
+sse = [] # Sum of Squared Errors
+k_range = range(1, 11) # Rango de K a probar (de 1 a 10 clusters)
+for k in k_range:
+    # n_init='auto' es el valor por defecto y recomendado para versiones recientes de sklearn
+    kmeans = KMeans(n_clusters=k, random_state=42, n_init='auto')
+    kmeans.fit(X_scaled)
+    sse.append(kmeans.inertia_)
+
+plt.figure(figsize=(10, 6))
+plt.plot(k_range, sse, marker='o')
+plt.title('Método del Codo para K-Means')
+plt.xlabel('Número de Clusters (K)')
+plt.ylabel('SSE (Inercia)')
+plt.xticks(k_range)
+plt.grid(True)
+plt.show()
+print("El gráfico del Método del Codo se ha generado. Busca el 'codo' para identificar el K óptimo.")
+
+# --- Sección 5: Aplicación de K-Means con el K óptimo ---
+# Basado en la observación del dendrograma y el método del codo,
+# elige un valor para 'optimal_k'. Por ejemplo, 3 o 4 suele ser un buen punto de partida.
+# Puedes ajustar este valor después de ejecutar y analizar los resultados.
+optimal_k = 3 # Ejemplo: se asume que K=3 es óptimo
+print(f"\n--- Sección 5: Aplicando K-Means con K = {optimal_k} ---")
+kmeans_final = KMeans(n_clusters=optimal_k, random_state=42, n_init='auto')
+data['Cluster'] = kmeans_final.fit_predict(X_scaled)
+print(f"Clustering completado. Se crearon {optimal_k} clusters.")
+print("Primeras 5 filas con la asignación de Cluster:")
+print(data.head())
+
+# --- Sección 6: Análisis y Visualización de Clusters ---
+print("\n--- Sección 6: Analizando y Visualizando Clusters ---")
+
+# Visualización con PCA si el número de características es > 2
+if len(existing_features) > 2:
+    print("Aplicando PCA para visualización 2D de los clusters...")
+    pca = PCA(n_components=2)
+    X_pca = pca.fit_transform(X_scaled)
+    plt.figure(figsize=(10, 8))
+    sns.scatterplot(x=X_pca[:, 0], y=X_pca[:, 1], hue=data['Cluster'], palette='viridis', s=100, alpha=0.7)
+    plt.title('Clusters de Clientes (PCA 2D)')
+    plt.xlabel(f'Componente Principal 1 ({pca.explained_variance_ratio_[0]*100:.2f}%)')
+    plt.ylabel(f'Componente Principal 2 ({pca.explained_variance_ratio_[1]*100:.2f}%)')
+    plt.legend(title='Cluster')
+    plt.grid(True)
+    plt.show()
+else:
+    print("El número de características es 2 o menos, no se necesita PCA para visualización 2D.")
+    plt.figure(figsize=(10, 8))
+    sns.scatterplot(x=X_scaled_df.iloc[:, 0], y=X_scaled_df.iloc[:, 1], hue=data['Cluster'], palette='viridis', s=100, alpha=0.7)
+    plt.title('Clusters de Clientes')
+    plt.xlabel(existing_features[0])
+    plt.ylabel(existing_features[1])
+    plt.legend(title='Cluster')
+    plt.grid(True)
+    plt.show()
+
+
+# Análisis de las características por cluster (Box Plots)
+print("\nGenerando Box Plots para cada característica por Cluster...")
+for feature in existing_features:
+    plt.figure(figsize=(8, 5))
+    sns.boxplot(x='Cluster', y=feature, data=data, palette='viridis')
+    plt.title(f'Distribución de {feature} por Cluster')
+    plt.show()
+
+# Descripción estadística de los clusters
+print("\n--- Características Promedio de Cada Cluster ---")
+cluster_summary = data.groupby('Cluster')[existing_features].mean()
+print(cluster_summary)
+
+print("\n--- Descripción Detallada de los Clusters (Media, Mediana, Std) ---")
+cluster_detailed_summary = data.groupby('Cluster')[existing_features].agg(['mean', 'median', 'std'])
+print(cluster_detailed_summary)
+
+# --- Sección 7: Conclusiones y Próximos Pasos ---
+print("\n--- Sección 7: Conclusiones y Próximos Pasos ---")
+print("Análisis de Clustering Completado.")
+print("\n**Interpretación de Resultados:**")
+print("Observa los Box Plots y las tablas de resumen para entender las características distintivas de cada cluster.")
+print("Por ejemplo, ¿hay un cluster con 'Ingresos' muy altos pero 'Numero_Transacciones' bajos? ¿O un cluster con 'Antiguedad_Cliente_Meses' baja y 'Uso_Servicio_Frecuencia' alta?")
+print("Estos perfiles te ayudarán a dar un nombre y entender el comportamiento de cada grupo de clientes.")
+
+print("\n**Próximos Pasos Sugeridos:**")
+print("1. **Validación:** Evaluar la robustez de los clusters con otras métricas (e.g., Silhouette Score).")
+print("2. **Denominación:** Asignar nombres descriptivos a cada cluster (e.g., 'Clientes VIP', 'Nuevos Adquiridos', 'Clientes en Riesgo').")
+print("3. **Acciones Estratégicas:** Diseñar estrategias de marketing, servicio al cliente o retención personalizadas para cada cluster.")
+print("4. **Análisis de Churn:** Integrar la variable 'churn' (si existe en el dataset) con los clusters para ver si ciertos grupos tienen mayor probabilidad de churn.")
+
+print("\nFin del Script.")
