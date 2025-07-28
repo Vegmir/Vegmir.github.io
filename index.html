@@ -1,33 +1,28 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AVblog</title>
+  <title>AVblog - Portafolio de Aprendizaje</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: Arial, sans-serif;
-      background-color: #fa0303;
-      color: #000;
+      background-color: #fafafa;
+      color: #333;
       line-height: 1.6;
     }
-
-    header {
+    header, footer {
       background-color: #0f1113;
       color: #fff;
-      padding: 20px 0;
       text-align: center;
+      padding: 20px 10px;
     }
-
     .container {
-      max-width: 1000px;
+      max-width: 1100px;
       margin: auto;
       padding: 20px;
     }
-
     .profile-img {
       width: 150px;
       height: 150px;
@@ -36,180 +31,117 @@
       display: block;
       margin: 20px auto;
     }
-
-    .button-group {
-      text-align: center;
-      margin-top: 10px;
-    }
-
     .btn {
       display: inline-block;
       padding: 10px 20px;
       margin: 5px;
-      background-color: #24292e;
+      background-color: #007acc;
       color: #fff;
       text-decoration: none;
       border-radius: 5px;
-      transition: background-color 0.3s ease;
+      transition: 0.3s;
     }
-
     .btn:hover {
-      background-color: #444c56;
+      background-color: #005f99;
     }
-
-    section { margin: 40px 0; }
-
+    section {
+      margin: 40px 0;
+    }
     h2 {
       border-bottom: 2px solid #ddd;
       padding-bottom: 10px;
       margin-bottom: 20px;
     }
-
-    footer {
-      background-color: #24292e;
-      color: #fff;
-      text-align: center;
-      padding: 10px 0;
-      margin-top: 40px;
+    .project {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
-
+    pre {
+      background: #eee;
+      padding: 10px;
+      overflow-x: auto;
+    }
     @media (max-width: 600px) {
       .profile-img { width: 100px; height: 100px; }
-      .btn { padding: 8px 16px; font-size: 14px; }
+      .btn { padding: 8px 14px; font-size: 14px; }
     }
   </style>
 </head>
 <body>
-
   <header>
-    <h1>Blog personal</h1>
+    <h1>Blog de Antonio Vega</h1>
+    <p>Estudiante de Ingeniería Biomédica apasionado por la tecnología y la inteligencia artificial</p>
   </header>
-
+  
   <div class="container">
-    <img src="mi-imagen.jpg" alt="mi-imagen" class="profile-img" />
+    <img src="mi-imagen.jpg" alt="Antonio Vega" class="profile-img" />
 
-    <div class="button-group">
-      <a href="https://github.com/Vegmir" target="_blank" class="btn">Visita mi GitHub</a>
-      <a href="pagina2.html" class="btn">PROYECTO CON IA</a>
+    <div style="text-align: center;">
+      <a href="https://github.com/Vegmir" target="_blank" class="btn">Mi GitHub</a>
     </div>
 
-    <section id="yo">
-      <h2>Yo</h2>
-      <p>Hola!, qué tal, me llamo Antonio Vega.</p>
-      <p>Soy estudiante de Ingeniería Biomédica. Me gusta la mecánica, el desarme y análisis técnico de sistemas.</p>
+    <section>
+      <h2>Sobre mí</h2>
+      <p>Hola!, qué tal, me llamo Antonio Vega. Soy estudiante de Ingeniería Biomédica. Me gusta la mecánica, el desarme y análisis técnico de sistemas.</p>
+      <p>Este sitio muestra algunos proyectos de aprendizaje relacionados con Inteligencia Artificial, Ciencia de Datos y su aplicación en entornos reales.</p>
     </section>
 
-    <section id="saber">
-      <h2>Lo que debes saber</h2>
-      <p>Bienvenidos a este pequeño espacio. No es para todos, pero sí para quienes ven más allá del común.</p>
+    <section>
+      <h2>Proyecto: Gestión Inteligente del Taller Mecánico</h2>
+      <div class="project">
+        <p>Plataforma conceptual que aplica IA para optimizar procesos de talleres mecánicos:</p>
+        <ul>
+          <li><strong>Predicción de Mantenimientos Preventivos</strong>: reduce fallas anticipándose a los servicios requeridos.</li>
+          <li><strong>Optimización de Inventario</strong>: administra el stock según demanda.</li>
+          <li><strong>Automatización de Citas</strong>: organiza horarios del taller eficientemente.</li>
+          <li><strong>Gestión de Flotas</strong>: seguimiento integral de vehículos empresariales.</li>
+          <li><strong>Análisis Financiero</strong>: mejora la rentabilidad identificando los servicios clave.</li>
+        </ul>
+        <p><em>Beneficios esperados: reducción de fallas críticas, mejora logística, reportes inteligentes y mayor rentabilidad.</em></p>
+      </div>
     </section>
 
-    <section id="contacto">
+    <section>
+      <h2>Proyectos de Aprendizaje</h2>
+
+      <div class="project">
+        <h3>Laboratorio 1: Clasificación binaria con MNIST</h3>
+        <p>Entrenamiento de modelos KNN y RandomForest para clasificar si una imagen es el dígito 7 o no. Se evaluaron con precisión, recall y curvas ROC.</p>
+        <pre><code># RandomForestClassifier sobre MNIST
+y_binario = (y == 7).astype(int)
+rf_clf.fit(X_train, y_train)
+...</code></pre>
+      </div>
+
+      <div class="project">
+        <h3>Laboratorio 2: Comparativa KNN vs RandomForest</h3>
+        <p>Se probaron ambos modelos en el conjunto MNIST para determinar el mejor clasificador con métricas gráficas: precisión vs recall, matriz de confusión, curva ROC, etc.</p>
+        <pre><code>plt.plot(thresholds, precisions[:-1], "b--", label="Precision")
+plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
+...</code></pre>
+      </div>
+
+      <div class="project">
+        <h3>Laboratorio 3: Predicción de uso de bicicletas</h3>
+        <p>Modelo de regresión lineal entrenado para predecir la cantidad de bicicletas alquiladas con base en variables climáticas y de calendario.</p>
+        <pre><code>model = LinearRegression()
+model.fit(X_train_scaled, Y_train)
+predictions = model.predict(X_test_scaled)
+...</code></pre>
+      </div>
+    </section>
+
+    <section>
       <h2>Contacto</h2>
       <p>Puedes escribirme a: <a href="mailto:antoniovega1726@gmail.com">antoniovega1726@gmail.com</a></p>
     </section>
   </div>
 
   <footer>
-    &copy; 2025 Mi Página Personal. Todos los derechos reservados.
+    &copy; 2025 Antonio Vega - Blog Personal. Todos los derechos reservados.
   </footer>
-
-</body>
-</html>
-
-
-
-<!-- pagina2.html -->
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gestión Inteligente del Taller</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f4f4f4;
-      color: #333;
-    }
-
-    h1, h2 {
-      color: #2c3e50;
-    }
-
-    section {
-      margin-bottom: 30px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
-    }
-
-    .btn-back {
-      display: inline-block;
-      margin-bottom: 20px;
-      padding: 10px 20px;
-      background-color: #24292e;
-      color: white;
-      text-decoration: none;
-      border-radius: 5px;
-      transition: background-color 0.3s ease;
-    }
-
-    .btn-back:hover {
-      background-color: #444c56;
-    }
-
-    ul {
-      margin-left: 20px;
-    }
-  </style>
-</head>
-<body>
-
-  <a href="index.html" class="btn-back">ATRÁS</a>
-
-  <h1>Gestión Inteligente del Taller Mecánico</h1>
-
-  <p>Esta plataforma utiliza Inteligencia Artificial para mejorar la administración de talleres mecánicos, tanto para clientes individuales como flotas empresariales.</p>
-
-  <section>
-    <h2>1. Predicción de Mantenimientos Preventivos</h2>
-    <p>Anticipa necesidades de servicio con base en historial y uso del vehículo, reduciendo tiempos de inactividad.</p>
-  </section>
-
-  <section>
-    <h2>2. Optimización del Inventario</h2>
-    <p>Ajusta el stock según la demanda futura estimada, evitando exceso o falta de piezas.</p>
-  </section>
-
-  <section>
-    <h2>3. Automatización de Citas</h2>
-    <p>Organiza la agenda del taller según la carga de trabajo, disponibilidad y tipo de servicio.</p>
-  </section>
-
-  <section>
-    <h2>4. Gestión de Flotas</h2>
-    <p>Administra múltiples vehículos empresariales, registra costos y genera informes.</p>
-  </section>
-
-  <section>
-    <h2>5. Análisis Financiero</h2>
-    <p>Detecta los servicios más rentables y sugiere mejoras de precios o promociones.</p>
-  </section>
-
-  <section>
-    <h2>Beneficios</h2>
-    <ul>
-      <li>Disminuye fallas críticas.</li>
-      <li>Control eficiente de inventario.</li>
-      <li>Agenda automatizada.</li>
-      <li>Reportes para empresas.</li>
-      <li>Mejora la rentabilidad del taller.</li>
-    </ul>
-  </section>
-
 </body>
 </html>
