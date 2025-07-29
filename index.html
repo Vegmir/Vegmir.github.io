@@ -125,11 +125,43 @@ plt.plot(thresholds, recalls[:-1], "g-", label="Recall")
       </div>
 
       <div class="project">
+        <h3>Tarea 2: Clasificador binario con Random Forest</h3>
+        <p>Proyecto que usa RandomForestClassifier y KNeighborsClassifier para predecir si una imagen es el número 7. Se presentan gráficas de evaluación, precisión, recall, curvas ROC y matriz de confusión.</p>
+        <ul>
+          <li>Descarga del dataset MNIST desde OpenML</li>
+          <li>Conversión binaria de etiquetas (¿es 7?)</li>
+          <li>Entrenamiento de modelos y selección del mejor</li>
+          <li>Evaluación con múltiples métricas visuales</li>
+        </ul>
+        <pre><code>mnist = fetch_openml('mnist_784', version=1)
+y_binario = (y == 7).astype(int)
+best_model = RandomForestClassifier(...)
+...</code></pre>
+      </div>
+
+      <div class="project">
         <h3>Laboratorio 3: Predicción de uso de bicicletas</h3>
         <p>Modelo de regresión lineal entrenado para predecir la cantidad de bicicletas alquiladas con base en variables climáticas y de calendario.</p>
         <pre><code>model = LinearRegression()
 model.fit(X_train_scaled, Y_train)
 predictions = model.predict(X_test_scaled)
+...</code></pre>
+      </div>
+
+      <div class="project">
+        <h3>Tarea 3: Segmentación de Clientes con Clustering</h3>
+        <p>Este proyecto utiliza técnicas de aprendizaje no supervisado para agrupar clientes según su comportamiento y características demográficas a partir del dataset <code>churn_prediction.csv</code>. Se aplican los siguientes pasos:</p>
+        <ul>
+          <li><strong>Preparación de datos:</strong> imputación de valores nulos, selección de variables, y estandarización con <code>StandardScaler</code>.</li>
+          <li><strong>Análisis jerárquico:</strong> visualización con dendrograma para sugerir el número de clusters.</li>
+          <li><strong>Método del Codo:</strong> uso de SSE para determinar el número óptimo de clusters en K-Means.</li>
+          <li><strong>Modelo K-Means:</strong> segmentación de clientes y visualización con PCA.</li>
+          <li><strong>Box plots:</strong> análisis gráfico de cada variable por grupo.</li>
+          <li><strong>Resumen por cluster:</strong> estadísticas descriptivas para entender cada perfil de cliente.</li>
+        </ul>
+        <pre><code># Escalado y clustering
+data['Cluster'] = KMeans(n_clusters=3).fit_predict(X_scaled)
+cluster_summary = data.groupby('Cluster')[features].mean()
 ...</code></pre>
       </div>
     </section>
