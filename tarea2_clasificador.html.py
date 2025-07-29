@@ -82,3 +82,97 @@ plt.ylabel("True Positive Rate")
 plt.legend()
 plt.grid(True)
 plt.show()
+
+
+
+
+
+
+
+# --- Importar librerías ---
+import pandas as pd
+import matplotlib.pyplot as plt
+import os
+from zipfile import ZipFile
+
+# --- Ver archivos en el directorio actual ---
+print("Archivos disponibles:")
+print(os.listdir())
+
+# --- Función utilitaria para extraer datos ---
+def unzip_data(path):
+    with ZipFile(path, 'r') as zipObj:
+        zipObj.extractall()
+    print(f"Datos extraídos desde {path}")
+
+# --- Extraer archivo ZIP ---
+unzip_data('spaceship-titanic.zip')
+
+# --- Leer datasets extraídos ---
+train_ds = pd.read_csv('train.csv')
+test_ds = pd.read_csv('test.csv')
+
+# --- Visualizar las primeras filas ---
+print("\nPrimeras 5 filas del dataset de entrenamiento:")
+print(train_ds.head())
+
+print("\nPrimeras 5 filas del dataset de prueba:")
+print(test_ds.head())
+
+# --- Cantidad de filas ---
+ntrain = train_ds.shape[0]
+ntest = test_ds.shape[0]
+print(f'\nDataset tiene {ntrain} datos de entrenamiento')
+print(f'Dataset tiene {ntest} datos de prueba')
+
+# --- Información de las columnas ---
+print("\nInformación general del dataset de entrenamiento:")
+print(train_ds.info())
+
+# --- Verificar campos nulos ---
+print("\nCampos nulos en el dataset de entrenamiento:")
+print(train_ds.isnull().sum())
+
+# --- Función para imputar valores más frecuentes ---
+def impute_most_frequent_data(df):
+    for column_name in df.columns:
+        if df[column_name].isnull().sum() > 0:
+            most_frequent = df[column_name].value_counts().idxmax()
+            df[column_name].fillna(most_frequent, inplace=True)
+    return df
+
+# --- Aplicar la imputación ---
+train_ds = impute_most_frequent_data(train_ds)
+
+# --- Validar campos nulos nuevamente ---
+print("\nCampos nulos después de imputación:")
+print(train_ds.isnull().sum())
+
+# --- Agrupar por planeta y sumar la columna VIP ---
+home_planet_vs_vip = train_ds.groupby('HomePlanet')['VIP'].sum()
+print("\nCantidad de VIP por planeta de origen:")
+print(home_planet_vs_vip)
+
+# --- Gráfico de barras de VIPs por planeta ---
+fig, ax = plt.subplots()
+ax.bar(home_planet_vs_vip.index, home_planet_vs_vip.values)
+ax.set_xticklabels(home_planet_vs_vip.index, rotation=45)
+ax.set_ylabel("Cantidad de personas VIP por planeta")
+ax.set_title("VIPs por HomePlanet")
+plt.tight_layout()
+plt.show()
+
+# --- Agrupar por edad y sumar gastos totales ---
+train_ds['TotalSpent'] = train_ds[['RoomService', 'FoodCourt', 'ShoppingMall', 'Spa', 'VRDeck']].sum(axis=1)
+age_vs_moneyspent = train_ds.groupby('Age')['TotalSpent'].sum()
+print("\nGasto total por edad:")
+print(age_vs_moneyspent.head())
+
+# --- Gráfico de dispersión ---
+plt.figure(figsize=(10, 5))
+plt.scatter(age_vs_moneyspent.index, age_vs_moneyspent.values, color='purple', alpha=0.6)
+plt.title("Dinero gastado por rango de edad")
+plt.xlabel("Edad")
+plt.ylabel("Gasto Total")
+plt.grid(True)
+plt.show()
