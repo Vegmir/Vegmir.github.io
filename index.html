@@ -175,5 +175,32 @@ cluster_summary = data.groupby('Cluster')[features].mean()
   <footer>
     &copy; 2025 Antonio Vega - Blog Personal. Todos los derechos reservados.
   </footer>
+
+  
+<div class="project">
+  <h3>Tarea 4: Transfer Learning con EfficientNetB0</h3>
+  <p>Proyecto que implementa Transfer Learning con la arquitectura <strong>EfficientNetB0</strong> usando TensorFlow/Keras para clasificación de imágenes. 
+  El script carga las imágenes desde carpetas, aplica <em>data augmentation</em>, entrena en dos fases (base congelada y <em>fine-tuning</em>), 
+  genera métricas de rendimiento y guarda el modelo final junto a gráficas y matriz de confusión.</p>
+  <ul>
+    <li><strong>Entrada:</strong> imágenes organizadas en subcarpetas por clase.</li>
+    <li><strong>Etapas:</strong> entrenamiento inicial con capas congeladas y ajuste fino de capas superiores.</li>
+    <li><strong>Salidas:</strong> modelos guardados (<code>.keras</code>, <code>.h5</code>), gráficas de <em>accuracy</em>/<em>loss</em> y matriz de confusión.</li>
+  </ul>
+  <pre><code># Crear modelo base EfficientNetB0
+base_model = keras.applications.EfficientNetB0(
+    include_top=False, input_shape=IMG_SIZE + (3,), weights="imagenet"
+)
+base_model.trainable = False  # Etapa 1: congelada
+
+# Añadir capas finales
+x = layers.GlobalAveragePooling2D()(base_model.output)
+x = layers.Dropout(0.2)(x)
+outputs = layers.Dense(num_classes, activation="softmax")(x)
+model = keras.Model(base_model.input, outputs)
+...</code></pre>
+</div>
+
 </body>
 </html>
+
