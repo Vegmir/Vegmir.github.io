@@ -1,0 +1,301 @@
+
+
+import os
+import shutil
+import random
+from pathlib import Path
+import itertools
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+DATA_DIR = "data"              # Carpeta raíz de datos
+TRAIN_DIR = "data/train"       # Entrenamiento (si no existe, se crea desde DATA_DIR)
+VAL_DIR = "data/val"           # Validación (si no existe, se crea desde DATA_DIR)
+IMG_SIZE = (224, 224)          # Tamaño de imagen para EfficientNetB0
+BATCH_SIZE = 32
+EPOCHS_STAGE1 = 10             # Entrena con base congelada
+EPOCHS_STAGE2 = 10             # Fine-tuning (descongelando parte de la base)
+BASE_LEARNING_RATE = 1e-3
+FINE_TUNE_LEARNING_RATE = 1e-4
+FINE_TUNE_AT = 200             # Descongelar desde esta capa hacia arriba
+MODEL_NAME = "efficientnetb0_transfer"
+OUTPUT_DIR = "outputs"         # Donde se guardan modelos, historia, figuras
+SEED = 42
+VAL_SPLIT_FALLBACK = 0.2       # Si hay que dividir automáticamente DATA_DIR
+
+random.seed(SEED)
+np.random.seed(SEED)
+
+
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+from sklearn.metrics import confusion_matrix, classification_report
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+def ensure_train_val_dirs():
+    """Si solo existe DATA_DIR con subcarpetas de clases, crea split en train/val."""
+    train_p = Path(TRAIN_DIR)
+    val_p = Path(VAL_DIR)
+    data_p = Path(DATA_DIR)
+
+    if train_p.exists() and val_p.exists():
+        # Ya está listo
+        return
+
+    # Si no hay train/val pero sí data/ con clases -> hacer split
+    class_dirs = [p for p in data_p.glob("*") if p.is_dir()]
+    if len(class_dirs) == 0:
+        raise RuntimeError(
+            f"No se encontraron subcarpetas de clases en '{DATA_DIR}'. "
+            "Estructura esperada: data/<claseA>/*.jpg, data/<claseB>/*.jpg ..."
+        )
+
+    print("No se encontró 'data/train' y 'data/val'. Creando split 80/20 automáticamente...")
+    train_p.mkdir(parents=True, exist_ok=True)
+    val_p.mkdir(parents=True, exist_ok=True)
+
+    for cdir in class_dirs:
+        images = list(itertools.chain(
+            cdir.glob("*.jpg"), cdir.glob("*.jpeg"), cdir.glob("*.png"), cdir.glob("*.bmp"), cdir.glob("*.gif")
+        ))
+        if len(images) == 0:
+            print(f"Advertencia: No hay imágenes en {cdir.name}, se omite.")
+            continue
+
+        random.shuffle(images)
+        n_val = int(len(images) * VAL_SPLIT_FALLBACK)
+        val_imgs = images[:n_val]
+        train_imgs = images[n_val:]
+
+        (train_p / cdir.name).mkdir(parents=True, exist_ok=True)
+        (val_p / cdir.name).mkdir(parents=True, exist_ok=True)
+
+        for src in train_imgs:
+            dst = train_p / cdir.name / src.name
+            if not dst.exists():
+                shutil.copy2(src, dst)
+        for src in val_imgs:
+            dst = val_p / cdir.name / src.name
+            if not dst.exists():
+                shutil.copy2(src, dst)
+
+    print("Split creado en:")
+    print(f" - {TRAIN_DIR}")
+    print(f" - {VAL_DIR}")
+
+def make_datasets():
+    """Crea tf.data.Dataset para train/val con augmentación y cache/prefetch."""
+    # Data augmentation (solo train)
+    data_augmentation = keras.Sequential(
+        [
+            layers.RandomFlip("horizontal"),
+            layers.RandomRotation(0.05),
+            layers.RandomZoom(0.1),
+            layers.RandomBrightness(factor=0.1),
+            layers.RandomContrast(factor=0.1),
+        ],
+        name="data_augmentation",
+    )
+
+    train_ds = keras.preprocessing.image_dataset_from_directory(
+        TRAIN_DIR,
+        labels="inferred",
+        label_mode="categorical",  # para softmax
+        batch_size=BATCH_SIZE,
+        image_size=IMG_SIZE,
+        shuffle=True,
+        seed=SEED,
+    )
+
+    val_ds = keras.preprocessing.image_dataset_from_directory(
+        VAL_DIR,
+        labels="inferred",
+        label_mode="categorical",
+        batch_size=BATCH_SIZE,
+        image_size=IMG_SIZE,
+        shuffle=False,
+    )
+
+    class_names = train_ds.class_names
+    num_classes = len(class_names)
+    print("Clases:", class_names)
+
+    # Aumentación en pipeline de train
+    autotune = tf.data.AUTOTUNE
+    train_ds = (
+        train_ds
+        .map(lambda x, y: (data_augmentation(x, training=True), y), num_parallel_calls=autotune)
+        .prefetch(autotune)
+        .cache()
+    )
+    val_ds = val_ds.prefetch(autotune).cache()
+
+    return train_ds, val_ds, class_names, num_classes
+
+def build_model(num_classes: int):
+    """Crea modelo con EfficientNetB0 como base."""
+    base_model = keras.applications.EfficientNetB0(
+        include_top=False, input_shape=IMG_SIZE + (3,), weights="imagenet"
+    )
+    base_model.trainable = False  # Etapa 1: congelada
+
+    inputs = layers.Input(shape=IMG_SIZE + (3,))
+    x = keras.applications.efficientnet.preprocess_input(inputs)
+    x = base_model(x, training=False)
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dropout(0.2)(x)
+    outputs = layers.Dense(num_classes, activation="softmax")(x)
+    model = keras.Model(inputs, outputs, name="efficientnetb0_transfer")
+
+    return model, base_model
+
+def compile_and_train(model, train_ds, val_ds, epochs, lr, stage_name="stage1"):
+    model.compile(
+        optimizer=keras.optimizers.Adam(learning_rate=lr),
+        loss="categorical_crossentropy",
+        metrics=["accuracy"]
+    )
+    ckpt_path = os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_{stage_name}.keras")
+    callbacks = [
+        keras.callbacks.ModelCheckpoint(ckpt_path, monitor="val_accuracy", save_best_only=True, verbose=1),
+        keras.callbacks.EarlyStopping(monitor="val_accuracy", patience=5, restore_best_weights=True, verbose=1),
+        keras.callbacks.ReduceLROnPlateau(monitor="val_loss", factor=0.5, patience=3, verbose=1),
+        keras.callbacks.TensorBoard(log_dir=os.path.join(OUTPUT_DIR, f"tb_{stage_name}"))
+    ]
+
+    history = model.fit(
+        train_ds,
+        validation_data=val_ds,
+        epochs=epochs,
+        callbacks=callbacks,
+        verbose=1
+    )
+    # Guardar historia simple
+    np.save(os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_{stage_name}_history.npy"), history.history)
+    return history
+
+def fine_tune(model, base_model, train_ds, val_ds, fine_tune_at, epochs, lr):
+    # Descongelar parte superior de la base
+    base_model.trainable = True
+    for layer in base_model.layers[:fine_tune_at]:
+        layer.trainable = False
+    print(f"Fine-tuning: capas desde {fine_tune_at} hasta el final ahora son entrenables.")
+
+    return compile_and_train(
+        model, train_ds, val_ds,
+        epochs=epochs, lr=lr, stage_name="finetune"
+    )
+
+def plot_history(histories, labels, out_path):
+    """Grafica accuracy y loss de varias etapas."""
+    plt.figure()
+    for h, lab in zip(histories, labels):
+        plt.plot(h["accuracy"], label=f"acc {lab}")
+    for h, lab in zip(histories, labels):
+        plt.plot(h["val_accuracy"], label=f"val_acc {lab}", linestyle="--")
+    plt.title("Accuracy")
+    plt.xlabel("Epoch")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_path, "accuracy.png"), dpi=120)
+    plt.close()
+
+    plt.figure()
+    for h, lab in zip(histories, labels):
+        plt.plot(h["loss"], label=f"loss {lab}")
+    for h, lab in zip(histories, labels):
+        plt.plot(h["val_loss"], label=f"val_loss {lab}", linestyle="--")
+    plt.title("Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(out_path, "loss.png"), dpi=120)
+    plt.close()
+
+def evaluate_and_report(model, val_ds, class_names):
+    y_true = []
+    y_pred = []
+    for batch_x, batch_y in val_ds:
+        preds = model.predict(batch_x, verbose=0)
+        y_pred.extend(np.argmax(preds, axis=1))
+        y_true.extend(np.argmax(batch_y.numpy(), axis=1))
+    y_true = np.array(y_true)
+    y_pred = np.array(y_pred)
+
+    # Reporte
+    print("\n=== Classification Report ===")
+    print(classification_report(y_true, y_pred, target_names=class_names, digits=4))
+
+    # Matriz de confusión
+    cm = confusion_matrix(y_true, y_pred)
+    fig = plt.figure()
+    plt.imshow(cm, interpolation="nearest")
+    plt.title("Matriz de confusión")
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45, ha="right")
+    plt.yticks(tick_marks, class_names)
+    thresh = cm.max() / 2.0
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, cm[i, j],
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel("True label")
+    plt.xlabel("Predicted label")
+    cm_path = os.path.join(OUTPUT_DIR, "confusion_matrix.png")
+    plt.savefig(cm_path, dpi=140, bbox_inches="tight")
+    plt.close()
+    print(f"Matriz de confusión guardada en: {cm_path}")
+
+def main():
+    ensure_train_val_dirs()
+
+    train_ds, val_ds, class_names, num_classes = make_datasets()
+    model, base_model = build_model(num_classes)
+
+    print("\n=== ETAPA 1: Entrenando con base congelada ===")
+    h1 = compile_and_train(
+        model, train_ds, val_ds,
+        epochs=EPOCHS_STAGE1, lr=BASE_LEARNING_RATE, stage_name="frozen"
+    )
+
+    print("\n=== ETAPA 2: Fine-tuning (descongelando capas superiores) ===")
+    h2 = fine_tune(
+        model, base_model, train_ds, val_ds,
+        fine_tune_at=FINE_TUNE_AT, epochs=EPOCHS_STAGE2, lr=FINE_TUNE_LEARNING_RATE
+    )
+
+    # Guardar modelo final en dos formatos
+    final_keras = os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_final.keras")
+    model.save(final_keras)
+    try:
+        final_h5 = os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_final.h5")
+        model.save(final_h5)
+    except Exception as e:
+        print(f"Nota: No se pudo guardar en .h5 ({e}). El formato .keras ya fue guardado.")
+
+    # Graficar historia
+    h1d = np.load(os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_frozen_history.npy"), allow_pickle=True).item()
+    h2d = np.load(os.path.join(OUTPUT_DIR, f"{MODEL_NAME}_finetune_history.npy"), allow_pickle=True).item()
+    plot_history([h1d, h2d], ["frozen", "finetune"], OUTPUT_DIR)
+
+    # Evaluación final
+    print("\n=== Evaluación final en validación ===")
+    loss, acc = model.evaluate(val_ds, verbose=1)
+    print(f"Val Loss: {loss:.4f} | Val Acc: {acc:.4f}")
+
+    evaluate_and_report(model, val_ds, class_names)
+    print(f"\nModelos y salidas guardados en: {Path(OUTPUT_DIR).resolve()}")
+
+if __name__ == "__main__":
+    # Opcional: habilitar mixed precision si tienes GPU Ampere+ (A100/RTX30xx/40xx)
+    # from tensorflow.keras.mixed_precision import set_global_policy
+    # set_global_policy("mixed_float16")
+    main()
