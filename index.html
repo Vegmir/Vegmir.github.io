@@ -176,6 +176,37 @@ cluster_summary = data.groupby('Cluster')[features].mean()
     &copy; 2025 Antonio Vega - Blog Personal. Todos los derechos reservados.
   </footer>
 
+   <div class="project">
+        <h3>Laboratorio 4: Transfer Learning con EfficientNetB0</h3>
+        <p>
+          Implementación de <strong>Transfer Learning</strong> para clasificación de imágenes usando <strong>TensorFlow/Keras</strong> con la arquitectura
+          <strong>EfficientNetB0</strong>. El pipeline carga datos desde carpetas, aplica <em>data augmentation</em>, entrena en dos fases
+          (base congelada y <em>fine-tuning</em>), guarda el modelo final y genera métricas (accuracy/loss) y una matriz de confusión.
+        </p>
+        <ul>
+          <li><strong>Entrada:</strong> imágenes organizadas en subcarpetas por clase (p. ej., <code>data/train</code> y <code>data/val</code>).</li>
+          <li><strong>Etapas:</strong> entrenamiento con la base congelada y ajuste fino de capas superiores.</li>
+          <li><strong>Salidas:</strong> modelos en <code>.keras</code> y (si es posible) <code>.h5</code>, gráficas de <em>accuracy</em>/<em>loss</em> y matriz de confusión.</li>
+        </ul>
+        <pre><code># Fragmento (main.py / transfer_learning_runner.py)
+base_model = keras.applications.EfficientNetB0(
+    include_top=False, input_shape=IMG_SIZE + (3,), weights="imagenet"
+)
+base_model.trainable = False  # Etapa 1: base congelada
+
+inputs = layers.Input(shape=IMG_SIZE + (3,))
+x = keras.applications.efficientnet.preprocess_input(inputs)
+x = base_model(x, training=False)
+x = layers.GlobalAveragePooling2D()(x)
+x = layers.Dropout(0.2)(x)
+outputs = layers.Dense(num_classes, activation="softmax")(x)
+model = keras.Model(inputs, outputs)
+model.compile(optimizer=keras.optimizers.Adam(1e-3),
+              loss="categorical_crossentropy",
+              metrics=["accuracy"])
+...</code></pre>
+       
+      </div>
   
 <div class="project">
   <h3>Tarea 4: Transfer Learning con EfficientNetB0</h3>
@@ -200,7 +231,10 @@ outputs = layers.Dense(num_classes, activation="softmax")(x)
 model = keras.Model(base_model.input, outputs)
 ...</code></pre>
 </div>
-
+ <div class="actions">
+          <a class="btn" href="https://github.com/Vegmir/Vegmir.github.io/tree/main" target="_blank">Para ver más</a>
+        </div>
 </body>
 </html>
+
 
