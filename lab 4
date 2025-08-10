@@ -1,0 +1,227 @@
+import os
+import sys
+import subprocess
+import argparse
+from pathlib import Path
+import shutil
+
+
+DATA_YAML = "datasets/mydata.yaml"  # Ruta a tu YAML
+PROJECT   = "runs_myproject"         # Carpeta donde se guardan resultados
+WEIGHTS   = "yolov5s.pt"             # pesos base: yolov5n/s/m/l/x.pt
+IMG_SIZE  = 640
+EPOCHS    = 50
+BATCH     = 16
+DEVICE    = ""                       # ""=auto | "cpu" | "0" | "0,1"
+WORKDIR   = Path(".").resolve()
+
+
+def run(cmd, cwd=None):
+    print(">>", " ".join(cmd))
+    subprocess.check_call(cmd, cwd=cwd)
+
+def ensure_git():
+    try:
+        run([sys.executable, "-c", "import git"])
+    except subprocess.CalledProcessError:
+        print("Instalando GitPython...")
+        run([sys.executable, "-m", "pip", "install", "gitpython"])
+
+def ensure_yolov5():
+    yoloroot = WORKDIR / "yolov5"
+    if not yoloroot.exists():
+        print("Clonando YOLOv5...")
+        run(["git", "clone", "--depth", "1", "https://github.com/ultralytics/yolov5"], cwd=WORKDIR)
+    # Instalar requirements de YOLOv5
+    print("Instalando requerimientos de YOLOv5...")
+    run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], cwd=yoloroot)
+    return yoloroot
+
+def ensure_requirements():
+    req = WORKDIR / "requirements.txt"
+    if req.exists():
+        print("Instalando requirements del proyecto...")
+        run([sys.executable, "-m", "pip", "install", "-r", str(req)])
+
+
+def cmd_train(args):
+    yoloroot = ensure_yolov5()
+    weights = args.weights or WEIGHTS
+    data    = args.data or DATA_YAML
+
+    cmd = [
+        sys.executable, "train.py",
+        "--img", str(args.img or IMG_SIZE),
+        "--batch", str(args.batch or BATCH),
+        "--epochs", str(args.epochs or EPOCHS),
+        "--data", data,
+        "--weights", weights,
+        "--project", PROJECT,
+        "--name", args.name or "exp",
+        "--exist-ok"
+    ]
+    if args.device is not None or DEVICE:
+        dev = args.device if args.device is not None else DEVICE
+        if dev != "":
+            cmd += ["--device", dev]
+    if args.cache:
+        cmd += ["--cache"]
+    if args.hyp:
+        cmd += ["--hyp", args.hyp]
+
+    run(cmd, cwd=yoloroot)
+
+def cmd_val(args):
+    yoloroot = ensure_yolov5()
+    weights  = args.weights
+    data     = args.data or DATA_YAML
+    if not weights:
+        # Si no pasan pesos, intenta tomar el último exp
+        last = sorted((WORKDIR / PROJECT).glob("**/weights/best.pt"))
+        if not last:
+            raise SystemExit("No se encontraron pesos entrenados. Pasa --weights o entrena primero.")
+        weights = str(last[-1])
+        print("Usando pesos:", weights)
+
+    cmd = [
+        sys.executable, "val.py",
+        "--weights", weights,
+        "--data", data,
+        "--img", str(args.img or IMG_SIZE),
+        "--project", PROJECT,
+        "--name", args.name or "val",
+        "--exist-ok"
+    ]
+    if args.device is not None or DEVICE:
+        dev = args.device if args.device is not None else DEVICE
+        if dev != "":
+            cmd += ["--device", dev]
+
+    run(cmd, cwd=yoloroot)
+
+def cmd_predict(args):
+    yoloroot = ensure_yolov5()
+    weights  = args.weights
+    if not weights:
+        last = sorted((WORKDIR / PROJECT).glob("**/weights/best.pt"))
+        if not last:
+            raise SystemExit("No se encontraron pesos entrenados. Pasa --weights o entrena primero.")
+        weights = str(last[-1])
+        print("Usando pesos:", weights)
+
+    source = args.source or "inference/images"
+    # Crea carpeta de ejemplo si no existe
+    Path(source).mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        sys.executable, "detect.py",
+        "--weights", weights,
+        "--source", source,
+        "--img", str(args.img or IMG_SIZE),
+        "--project", PROJECT,
+        "--name", args.name or "predict",
+        "--exist-ok",
+        "--save-txt",
+        "--save-conf"
+    ]
+    if args.device is not None or DEVICE:
+        dev = args.device if args.device is not None else DEVICE
+        if dev != "":
+            cmd += ["--device", dev"]
+
+    run(cmd, cwd=yoloroot)
+    print("Salidas de predicción en:", WORKDIR / PROJECT / (args.name or "predict"))
+
+def cmd_export(args):
+    yoloroot = ensure_yolov5()
+    weights  = args.weights
+    if not weights:
+        last = sorted((WORKDIR / PROJECT).glob("**/weights/best.pt"))
+        if not last:
+            raise SystemExit("No se encontraron pesos entrenados. Pasa --weights o entrena primero.")
+        weights = str(last[-1])
+        print("Usando pesos:", weights)
+
+    fmt = args.format or "onnx"  # onnx | torchscript | engine | coreml | saved_model | pb | tflite
+    cmd = [
+        sys.executable, "export.py",
+        "--weights", weights,
+        "--include", fmt,
+        "--img", str(args.img or IMG_SIZE)
+    ]
+    if args.dynamic:
+        cmd += ["--dynamic"]
+    if args.half:
+        cmd += ["--half"]
+
+    run(cmd, cwd=yoloroot)
+
+def cmd_cleanup(args):
+    # Limpia ejecuciones previas si quieres espacio
+    target = WORKDIR / PROJECT
+    if target.exists():
+        print("Eliminando:", target)
+        shutil.rmtree(target)
+    else:
+        print("Nada que limpiar:", target)
+
+
+def main():
+    ensure_git()
+    ensure_requirements()
+
+    parser = argparse.ArgumentParser(description="YOLOv5 flujo completo (train/val/predict/export).")
+    sub = parser.add_subparsers(dest="command")
+
+    # train
+    p_train = sub.add_parser("train", help="Entrenar YOLOv5")
+    p_train.add_argument("--data", type=str, default=None)
+    p_train.add_argument("--weights", type=str, default=None)
+    p_train.add_argument("--img", type=int, default=None)
+    p_train.add_argument("--epochs", type=int, default=None)
+    p_train.add_argument("--batch", type=int, default=None)
+    p_train.add_argument("--device", type=str, default=None)
+    p_train.add_argument("--name", type=str, default=None)
+    p_train.add_argument("--cache", action="store_true")
+    p_train.add_argument("--hyp", type=str, default=None)
+    p_train.set_defaults(func=cmd_train)
+
+    # val
+    p_val = sub.add_parser("val", help="Validar pesos entrenados")
+    p_val.add_argument("--data", type=str, default=None)
+    p_val.add_argument("--weights", type=str, default=None)
+    p_val.add_argument("--img", type=int, default=None)
+    p_val.add_argument("--device", type=str, default=None)
+    p_val.add_argument("--name", type=str, default=None)
+    p_val.set_defaults(func=cmd_val)
+
+    # predict
+    p_pred = sub.add_parser("predict", help="Inferencia en imágenes/carpeta/video")
+    p_pred.add_argument("--weights", type=str, default=None)
+    p_pred.add_argument("--source", type=str, default=None)  # ruta a carpeta, imagen, video, webcam (0)
+    p_pred.add_argument("--img", type=int, default=None)
+    p_pred.add_argument("--device", type=str, default=None)
+    p_pred.add_argument("--name", type=str, default=None)
+    p_pred.set_defaults(func=cmd_predict)
+
+    # export
+    p_exp = sub.add_parser("export", help="Exportar modelo a otros formatos (ONNX, TFLite, etc.)")
+    p_exp.add_argument("--weights", type=str, default=None)
+    p_exp.add_argument("--img", type=int, default=None)
+    p_exp.add_argument("--format", type=str, default=None)
+    p_exp.add_argument("--dynamic", action="store_true")
+    p_exp.add_argument("--half", action="store_true")
+    p_exp.set_defaults(func=cmd_export)
+
+    # cleanup
+    p_clean = sub.add_parser("cleanup", help="Borrar carpeta de runs del proyecto")
+    p_clean.set_defaults(func=cmd_cleanup)
+
+    args = parser.parse_args()
+    if not args.command:
+        parser.print_help()
+        sys.exit(0)
+    args.func(args)
+
+if __name__ == "__main__":
+    main()
